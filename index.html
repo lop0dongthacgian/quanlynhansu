@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Quản Lý Nhân Sự</title>
+   <meta name="theme-color" content="#0d47a1">
+   <meta name="apple-mobile-web-app-title" content="Quản Lý Nhân Sự">
+   <link rel="manifest" href="manifest.json">
+   <script src="pwa-core.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Be Vietnam Pro', sans-serif; }
+
+        :root {
+            --primary: #1d4ed8;
+            --primary-light: #dbeafe;
+            --accent: #0ea5e9;
+            --surface: #ffffff;
+            --bg: #f0f4f8;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --muted: #64748b;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        body { background: var(--bg); }
+
+        /* Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Header gradient */
+        header { background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 60%, #0ea5e9 100%); }
+
+        /* Search main input */
+        .search-main {
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 0 4px rgba(29,78,216,0.08);
+        }
+        .search-main:focus { box-shadow: 0 0 0 4px rgba(29,78,216,0.18); }
+
+        /* Chip checkbox */
+        .filter-chip input[type=checkbox] { display: none; }
+        .filter-chip label {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            border: 1.5px solid var(--border);
+            background: #f8fafc;
+            color: var(--muted);
+            font-size: 12px; font-weight: 500;
+            cursor: pointer;
+            transition: all .15s;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .filter-chip input:checked + label {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .filter-chip label:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* Table */
+        #data-table thead th {
+            position: sticky; top: 0; z-index: 5;
+            background: #f1f5f9;
+            font-size: 11px; font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            padding: 10px 14px;
+            border-bottom: 2px solid var(--border);
+            white-space: nowrap;
+        }
+        #data-table tbody td {
+            padding: 9px 14px;
+            font-size: 13px;
+            color: var(--text);
+            border-bottom: 1px solid #f1f5f9;
+            white-space: nowrap;
+        }
+        #data-table tbody tr:hover td { background: #eff6ff; }
+
+        /* STT column */
+        .col-stt { width: 44px; text-align: center; font-weight: 600; color: var(--muted); }
+
+        /* Age columns styling */
+        .age-column {
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+            color: #166534;
+            font-weight: 500;
+        }
+        .party-age-column {
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            color: #1e40af;
+            font-weight: 500;
+        }
+
+        /* Modal overlay */
+        #export-modal, #household-modal {
+            display: none;
+            position: fixed; inset: 0; z-index: 50;
+            background: rgba(15,23,42,.45);
+            backdrop-filter: blur(4px);
+            align-items: center; justify-content: center;
+        }
+        #export-modal.open, #household-modal.open { display: flex; }
+        .modal-box {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 25px 60px rgba(0,0,0,.18);
+            width: 90%; max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: popIn .2s cubic-bezier(.34,1.56,.64,1);
+        }
+        .modal-box-lg {
+            max-width: 900px;
+        }
+        @keyframes popIn {
+            from { transform: scale(.9); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+        }
+
+        /* Col toggle in modal */
+        .col-toggle { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; cursor: pointer; transition: background .1s; }
+        .col-toggle:hover { background: #f1f5f9; }
+        .col-toggle input[type=checkbox] { accent-color: var(--primary); width: 15px; height: 15px; cursor: pointer; }
+
+        /* Responsive chips wrap */
+        #filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+        /* Birth year special input */
+        .birth-tab-btn {
+            flex: 1; padding: 5px 8px; font-size: 11px; font-weight: 600;
+            border-radius: 7px; border: none; cursor: pointer;
+            transition: all .15s; color: var(--muted); background: transparent;
+        }
+        .birth-tab-btn.active {
+            background: var(--primary); color: white;
+            box-shadow: 0 1px 4px rgba(29,78,216,.3);
+        }
+        .birth-tab-btn:not(.active):hover { background: #f1f5f9; color: var(--primary); }
+        .birth-hint { font-size: 10px; color: #94a3b8; margin-top: 3px; line-height: 1.4; }
+
+        /* Badge */
+        .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+
+        /* Button states */
+        .btn-primary { background: var(--primary); color: white; transition: background .15s, transform .1s; }
+        .btn-primary:hover { background: #1e40af; }
+        .btn-primary:active { transform: scale(.97); }
+        .btn-green { background: #16a34a; color: white; transition: background .15s, transform .1s; }
+        .btn-green:hover { background: #15803d; }
+        .btn-green:active { transform: scale(.97); }
+        .btn-purple { background: #7c3aed; color: white; transition: background .15s, transform .1s; }
+        .btn-purple:hover { background: #6d28d9; }
+        .btn-purple:active { transform: scale(.97); }
+        .btn-ghost { background: transparent; border: 1.5px solid var(--border); color: var(--muted); transition: all .15s; }
+        .btn-ghost:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+        .btn-warning { background: var(--warning); color: white; transition: all .15s; }
+        .btn-warning:hover { background: #d97706; }
+        .btn-danger { background: var(--danger); color: white; transition: all .15s; }
+        .btn-danger:hover { background: #dc2626; }
+
+        /* Saved indicator */
+        .saved-badge {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        /* Toggle age columns button */
+        .toggle-age-btn {
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            color: #166534;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .toggle-age-btn:hover {
+            background: #dcfce7;
+            border-color: #22c55e;
+        }
+        .toggle-age-btn.active {
+            background: #22c55e;
+            color: white;
+            border-color: #22c55e;
+        }
+
+        /* Mobile responsive action buttons */
+        .action-buttons-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .action-buttons-group button {
+            flex: 1;
+            min-width: 100px;
+            justify-content: center;
+        }
+        
+        @media (max-width: 640px) {
+            .modal-box { border-radius: 12px; }
+            #data-table thead th, #data-table tbody td { padding: 8px 10px; }
+            
+            .action-buttons-group {
+                width: 100%;
+            }
+            
+            .action-buttons-group button {
+                flex: 1;
+                min-width: 0;
+                font-size: 11px;
+                padding-left: 8px;
+                padding-right: 8px;
+            }
+            
+            #result-count {
+                width: 100%;
+                text-align: center;
+                margin-top: 4px;
+            }
+        }
+
+        /* Age column badge in modal */
+        .age-column-badge {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 999px;
+            margin-left: 6px;
+        }
+
+        /* Date normalize toast */
+        #date-toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            z-index: 100;
+            background: linear-gradient(135deg, #1d4ed8, #0ea5e9);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(29,78,216,0.35);
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            max-width: 90vw;
+            transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .35s;
+            opacity: 0;
+            pointer-events: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #date-toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* Stats cards for household summary */
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border: 1px solid var(--border);
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .stat-label {
+            font-size: 12px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Tabs */
+        .tab-btn {
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--muted);
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+            cursor: pointer;
+        }
+        .tab-btn:hover {
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            font-weight: 600;
+        }
+        .tab-panel {
+            display: none;
+        }
+        .tab-panel.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+<!-- Header -->
+<header class="text-white shadow-lg sticky top-0 z-20">
+    <div class="max-w-screen-xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+
+        <!-- Title -->
+        <div class="flex flex-col justify-center">
+            <h1 class="text-lg sm:text-xl font-bold leading-tight tracking-wide">
+                Hồ Sơ Nhân Sự
+            </h1>
+            <p class="text-blue-200 text-xs leading-tight hidden sm:block mt-1">
+                Tải lên Excel · Lọc · Tổng hợp hộ · Xuất dữ liệu
+            </p>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+            <label for="excel-upload"
+                class="flex-1 sm:flex-none cursor-pointer bg-white text-blue-700 px-4 py-2 rounded-lg font-semibold hover:bg-blue-50 text-sm text-center shadow-sm active:scale-95 flex items-center justify-center gap-2">
+                <i class="fas fa-file-upload"></i>
+                <span>Tải lên Excel</span>
+                <input type="file" id="excel-upload" class="hidden" accept=".xlsx,.xls,.csv">
+            </label>
+
+            <button id="household-summary-btn"
+                class="flex-1 sm:flex-none btn-purple px-4 py-2 rounded-lg font-semibold text-sm shadow-sm disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                disabled>
+                <i class="fas fa-users"></i>
+                <span>Tổng hợp hộ</span>
+            </button>
+
+            <button id="export-btn"
+                class="flex-1 sm:flex-none btn-green px-4 py-2 rounded-lg font-semibold text-sm shadow-sm disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                disabled>
+                <i class="fas fa-file-download"></i>
+                <span>Xuất Excel</span>
+            </button>
+        </div>
+
+    </div>
+</header>
+
+<main class="max-w-screen-xl mx-auto w-full px-3 sm:px-4 py-4 flex-grow flex flex-col gap-4">
+
+    <!-- Search Section -->
+    <section id="search-section" class="bg-white rounded-xl shadow-sm border border-slate-100 p-4 hidden">
+        <!-- Main search input -->
+        <div class="relative mb-4">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-blue-500 pointer-events-none">
+                <i class="fas fa-search text-sm"></i>
+            </span>
+            <input type="text" id="search-all"
+                   placeholder="Tìm kiếm tất cả các mục..."
+                   class="search-main w-full pl-11 pr-4 py-2.5 rounded-xl text-sm outline-none transition-all bg-white">
+        </div>
+
+        <!-- Column filter chips -->
+        <div class="mb-3">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Lọc theo cột</span>
+                <div class="flex gap-2">
+                    <button id="check-all-cols" class="text-xs text-blue-600 hover:underline">Chọn tất cả</button>
+                    <span class="text-slate-300">|</span>
+                    <button id="uncheck-all-cols" class="text-xs text-slate-400 hover:underline">Bỏ tất cả</button>
+                </div>
+            </div>
+            <div id="filter-chips"></div>
+        </div>
+
+        <!-- Active column search inputs -->
+        <div id="active-search-inputs" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-3"></div>
+
+        <!-- Footer row with 3 action buttons -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+            <div class="action-buttons-group">
+                <!-- Nút 1: Làm mới (Reset filters, keep data) -->
+                <button id="reset-search" class="btn-ghost text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                    <i class="fas fa-rotate-left text-xs"></i> <span>Làm mới</span>
+                </button>
+                
+                <!-- Nút 2: Lưu tạm (Add current results to saved pool) -->
+                <button id="save-temp" class="btn-warning text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                    <i class="fas fa-bookmark text-xs"></i> <span>Lưu tạm</span>
+                </button>
+                
+                <!-- Nút 3: Xóa tất cả (Clear all data) -->
+                <button id="clear-all" class="btn-danger text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                    <i class="fas fa-trash-alt text-xs"></i> <span>Xóa tất cả</span>
+                </button>
+            </div>
+            
+            <div class="flex items-center gap-3 flex-wrap">
+                <span id="result-count" class="text-xs text-slate-500"></span>
+                
+                <!-- Saved indicator -->
+                <div id="saved-indicator" class="hidden">
+                    <span class="saved-badge flex items-center gap-1">
+                        <i class="fas fa-database text-xs"></i>
+                        <span id="saved-count">0</span> đã lưu
+                    </span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Table Section with Tabs -->
+    <section class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex-grow flex flex-col" style="min-height: 400px">
+        <div class="px-4 py-3 border-b border-slate-100 bg-slate-50 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-3">
+                <h2 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                    <i class="fas fa-table text-blue-400"></i> Dữ liệu
+                    <span id="view-mode-badge" class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Hiện tại</span>
+                </h2>
+                <!-- Toggle age columns button -->
+                <button id="toggle-age-columns" class="toggle-age-btn active">
+                    <i class="fas fa-calculator text-xs"></i>
+                    <span>Ẩn cột tuổi</span>
+                </button>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="table-stats" class="text-xs text-slate-400">Chưa có dữ liệu</span>
+            </div>
+        </div>
+        <div class="overflow-auto flex-grow custom-scrollbar relative">
+            <table class="w-full text-left border-collapse" id="data-table">
+                <thead><tr id="table-header"></tr></thead>
+                <tbody id="table-body" class="divide-y divide-slate-50">
+                    <tr>
+                        <td colspan="100%" class="p-12 text-center text-slate-400 italic">
+                            <i class="fas fa-file-excel text-5xl mb-4 block opacity-20 text-green-500"></i>
+                            Vui lòng tải lên tệp Excel để bắt đầu
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <div id="loading-overlay" class="absolute inset-0 bg-white/80 backdrop-blur flex items-center justify-center hidden">
+                <div class="flex flex-col items-center gap-3">
+                    <div class="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
+                    <span class="text-sm text-slate-500">Đang xử lý...</span>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- Export Modal -->
+<div id="export-modal">
+    <div class="modal-box custom-scrollbar">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                <i class="fas fa-file-export text-green-500"></i> Tùy chọn xuất Excel
+            </h3>
+            <button id="close-modal" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="p-5">
+            <!-- Quick select -->
+            <div class="flex gap-2 mb-4">
+                <button id="modal-select-all" class="flex-1 text-xs btn-primary px-3 py-2 rounded-lg font-medium">
+                    <i class="fas fa-check-double mr-1"></i>Chọn tất cả
+                </button>
+                <button id="modal-deselect-all" class="flex-1 text-xs btn-ghost px-3 py-2 rounded-lg font-medium">
+                    <i class="fas fa-times mr-1"></i>Bỏ tất cả
+                </button>
+            </div>
+
+            <!-- Export mode selection -->
+            <div class="mb-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="radio" name="export-mode" value="current" checked class="accent-amber-500">
+                    <span class="text-sm">
+                        <i class="fas fa-eye text-amber-600 mr-1"></i>
+                        <strong>Xuất dữ liệu đang xem</strong>
+                        <span class="text-xs text-slate-500 block">Chỉ xuất kết quả hiện tại (đã lọc)</span>
+                    </span>
+                </label>
+                <label class="flex items-center gap-3 mt-2 cursor-pointer">
+                    <input type="radio" name="export-mode" value="saved" class="accent-amber-500">
+                    <span class="text-sm">
+                        <i class="fas fa-database text-amber-600 mr-1"></i>
+                        <strong>Xuất dữ liệu đã lưu tạm</strong>
+                        <span class="text-xs text-slate-500 block" id="saved-export-hint">Chưa có dữ liệu lưu tạm</span>
+                    </span>
+                </label>
+                <label class="flex items-center gap-3 mt-2 cursor-pointer">
+                    <input type="radio" name="export-mode" value="household" class="accent-purple-500">
+                    <span class="text-sm">
+                        <i class="fas fa-users text-purple-600 mr-1"></i>
+                        <strong>Xuất tổng hợp hộ gia đình</strong>
+                        <span class="text-xs text-slate-500 block" id="household-export-hint">Chưa có dữ liệu tổng hợp</span>
+                    </span>
+                </label>
+            </div>
+
+            <!-- Info: include STT -->
+            <label class="col-toggle mb-2 select-none">
+                <input type="checkbox" id="export-stt" checked>
+                <span class="text-sm font-medium text-slate-700">
+                    <i class="fas fa-list-ol text-blue-400 mr-1"></i> Cột STT (số thứ tự mới)
+                </span>
+            </label>
+
+            <!-- Auto-calculated columns info -->
+            <div class="mb-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                <div class="text-xs font-semibold text-green-700 mb-2 flex items-center gap-1">
+                    <i class="fas fa-calculator"></i> Cột tự động tính
+                </div>
+                <div id="auto-columns-info" class="text-xs text-slate-600 space-y-1">
+                    <!-- Will be populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Column list -->
+            <div class="border border-slate-100 rounded-xl overflow-hidden" id="export-col-section">
+                <div class="bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                    Chọn cột dữ liệu gốc
+                </div>
+                <div id="export-col-list" class="p-2 max-h-52 overflow-y-auto custom-scrollbar space-y-0.5"></div>
+            </div>
+
+            <div class="mt-3 text-xs text-slate-400 flex items-center gap-1.5">
+                <i class="fas fa-info-circle"></i>
+                <span id="export-preview-count">Sẽ xuất <strong>0</strong> hàng, <strong>0</strong> cột</span>
+            </div>
+        </div>
+
+        <div class="px-5 pb-5 flex gap-3">
+            <button id="confirm-export" class="flex-1 btn-green py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2">
+                <i class="fas fa-download"></i> Xuất file
+            </button>
+            <button id="cancel-export" class="btn-ghost px-5 py-2.5 rounded-xl font-medium text-sm">Hủy</button>
+        </div>
+    </div>
+</div>
+
+<!-- Household Summary Modal -->
+<div id="household-modal">
+    <div class="modal-box modal-box-lg custom-scrollbar">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                <i class="fas fa-users text-purple-500"></i> Tổng hợp hộ gia đình
+            </h3>
+            <button id="close-household-modal" class="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="p-5">
+            <!-- Column mapping selection -->
+            <div class="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                <p class="text-xs text-purple-700 mb-2 font-medium">
+                    <i class="fas fa-info-circle mr-1"></i> Chọn các cột tương ứng để tổng hợp hộ gia đình
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Cột tên chủ hộ</label>
+                        <select id="hh-owner-col" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                            <option value="">-- Tự động phát hiện --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Cột địa chỉ</label>
+                        <select id="hh-address-col" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                            <option value="">-- Tự động phát hiện --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Cột họ tên (đếm nhân khẩu)</label>
+                        <select id="hh-name-col" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                            <option value="">-- Tự động phát hiện --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats summary -->
+            <div id="household-stats" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <!-- Will be populated dynamically -->
+            </div>
+
+            <!-- Result table -->
+            <div class="border border-slate-100 rounded-xl overflow-hidden">
+                <div class="bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100 flex items-center justify-between">
+                    <span>Danh sách hộ gia đình</span>
+                    <span id="household-count" class="text-purple-600">0 hộ</span>
+                </div>
+                <div class="overflow-auto max-h-80 custom-scrollbar">
+                    <table class="w-full text-left border-collapse" id="household-table">
+                        <thead>
+                            <tr class="bg-slate-50">
+                                <th class="px-3 py-2 text-xs font-bold text-slate-500 uppercase">STT</th>
+                                <th class="px-3 py-2 text-xs font-bold text-slate-500 uppercase">Tên chủ hộ</th>
+                                <th class="px-3 py-2 text-xs font-bold text-slate-500 uppercase">Số nhân khẩu</th>
+                                <th class="px-3 py-2 text-xs font-bold text-slate-500 uppercase">Nơi thường trú</th>
+                            </tr>
+                        </thead>
+                        <tbody id="household-table-body" class="divide-y divide-slate-100">
+                            <tr>
+                                <td colspan="4" class="p-8 text-center text-slate-400 italic">
+                                    Nhấn "Tổng hợp" để xem kết quả
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-5 pb-5 flex gap-3">
+            <button id="process-household" class="flex-1 btn-purple py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2">
+                <i class="fas fa-calculator"></i> Tổng hợp
+            </button>
+            <button id="export-household" class="flex-1 btn-green py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed" disabled>
+                <i class="fas fa-download"></i> Xuất Excel
+            </button>
+            <button id="close-household-btn" class="btn-ghost px-5 py-2.5 rounded-xl font-medium text-sm">Đóng</button>
+        </div>
+    </div>
+</div>
+
+<div id="date-toast">
+    <i class="fas fa-calendar-check"></i>
+    <span id="date-toast-msg"></span>
+</div>
+
+<script>
+    let rawData = [];
+
+    // ── Toast helper ─────────────────────────────────────────────────
+    function showDateNormalizeToast(cols, idCols = []) {
+        const toast = document.getElementById('date-toast');
+        const msg = document.getElementById('date-toast-msg');
+        let parts = [];
+        if (cols.length > 0) {
+            const names = cols.length <= 3 ? cols.join(', ') : `${cols.slice(0,3).join(', ')} +${cols.length-3} cột`;
+            parts.push(`✔ Chuẩn hóa ${cols.length} cột ngày → dd/mm/yyyy: ${names}`);
+        }
+        if (idCols.length > 0) {
+            const idNames = idCols.length <= 2 ? idCols.join(', ') : `${idCols.slice(0,2).join(', ')} +${idCols.length-2} cột`;
+            parts.push(`🪪 Nhận diện ${idCols.length} cột CCCD/CMND: ${idNames}`);
+        }
+        if (parts.length === 0) return;
+        msg.textContent = parts.join(' | ');
+        toast.classList.add('show');
+        clearTimeout(toast._timer);
+        toast._timer = setTimeout(() => toast.classList.remove('show'), 5000);
+    }
+    let headers = [];
+    let filteredData = [];
+    let savedData = []; // Dữ liệu đã lưu tạm (tích lũy)
+    let householdData = []; // Dữ liệu tổng hợp hộ gia đình
+    let activeColFilters = new Set();
+    let currentViewMode = 'current'; // 'current' hoặc 'saved'
+    let showAgeColumns = true; // Hiển thị cột tuổi trong bảng
+
+    // COLUMN MAPPINGS cho tổng hợp hộ gia đình
+    const COL_MAP = {
+        name:    ['họvàtên','hovaten','họtên','hotên','tên','name','hovaten','họ và tên'],
+        owner:   ['họvàtênchủhộ','chủhộ','chuhộ','chuhọ','owner','chủhộ','họvàtênchủhộ','họ và tên chủ hộ'],
+        address: ['nơithườngtrú','nơithườngtru','thườngtrú','thuongtru','nơitrú','nơiởhiệntại','địachỉ','diachi'],
+        dob:     ['ngàysinh','ngaysinh','dob','birthdate','ngày sinh'],
+        gender:  ['gioitinh','giới tính','gioitính','sex','gender'],
+    };
+
+    // ── ID/CCCD/CMND column detection ───────────────────────────────
+    const ID_COL_KEYWORDS = [
+        'cccd', 'cmnd', 'chứng minh', 'chung minh', 'căn cước', 'can cuoc',
+        'số định danh', 'so dinh danh', 'đdcn', 'ddcn', 'định danh cá nhân',
+        'dinh danh ca nhan', 'số cmnd', 'số cccd', 'so cmnd', 'so cccd',
+        'identity', 'id card', 'national id', 'passport'
+    ];
+
+    function isIdCol(colName) {
+        // Chuẩn hóa: bỏ xuống dòng, khoảng trắng thừa trước khi so sánh
+        const lower = colName.toLowerCase().replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+        return ID_COL_KEYWORDS.some(kw => lower.includes(kw));
+    }
+
+    function findCol(candidates) {
+        if (!headers.length) return null;
+        for (const c of candidates) {
+            const match = headers.find(h =>
+                h.toLowerCase().replace(/\s+/g,'').includes(c.toLowerCase().replace(/\s+/g,''))
+            );
+            if (match) return match;
+        }
+        return null;
+    }
+
+    // DOM refs
+    const excelUpload     = document.getElementById('excel-upload');
+    const searchSection   = document.getElementById('search-section');
+    const searchAll       = document.getElementById('search-all');
+    const filterChips     = document.getElementById('filter-chips');
+    const activeInputsDiv = document.getElementById('active-search-inputs');
+    const tableHeader     = document.getElementById('table-header');
+    const tableBody       = document.getElementById('table-body');
+    const exportBtn       = document.getElementById('export-btn');
+    const householdBtn    = document.getElementById('household-summary-btn');
+    const loadingOverlay  = document.getElementById('loading-overlay');
+    const resultCount     = document.getElementById('result-count');
+    const resetBtn        = document.getElementById('reset-search');
+    const saveTempBtn     = document.getElementById('save-temp');
+    const clearAllBtn     = document.getElementById('clear-all');
+    const tableStats      = document.getElementById('table-stats');
+    const exportModal     = document.getElementById('export-modal');
+    const householdModal  = document.getElementById('household-modal');
+    const closeModal      = document.getElementById('close-modal');
+    const cancelExport    = document.getElementById('cancel-export');
+    const confirmExport   = document.getElementById('confirm-export');
+    const exportColList   = document.getElementById('export-col-list');
+    const exportPreview   = document.getElementById('export-preview-count');
+    const exportStt       = document.getElementById('export-stt');
+    const modalSelectAll  = document.getElementById('modal-select-all');
+    const modalDeselectAll= document.getElementById('modal-deselect-all');
+    const checkAllCols    = document.getElementById('check-all-cols');
+    const uncheckAllCols  = document.getElementById('uncheck-all-cols');
+    const savedIndicator  = document.getElementById('saved-indicator');
+    const savedCount      = document.getElementById('saved-count');
+    const viewModeBadge   = document.getElementById('view-mode-badge');
+    const savedExportHint = document.getElementById('saved-export-hint');
+    const householdExportHint = document.getElementById('household-export-hint');
+    const autoColumnsInfo = document.getElementById('auto-columns-info');
+    const toggleAgeBtn    = document.getElementById('toggle-age-columns');
+    
+    // Household modal elements
+    const closeHouseholdModal = document.getElementById('close-household-modal');
+    const closeHouseholdBtn = document.getElementById('close-household-btn');
+    const hhOwnerCol = document.getElementById('hh-owner-col');
+    const hhAddressCol = document.getElementById('hh-address-col');
+    const hhNameCol = document.getElementById('hh-name-col');
+    const processHousehold = document.getElementById('process-household');
+    const exportHousehold = document.getElementById('export-household');
+    const householdStats = document.getElementById('household-stats');
+    const householdTableBody = document.getElementById('household-table-body');
+    const householdCount = document.getElementById('household-count');
+
+    // Toggle age columns visibility
+    toggleAgeBtn.addEventListener('click', function() {
+        showAgeColumns = !showAgeColumns;
+        this.classList.toggle('active', showAgeColumns);
+        this.querySelector('span').textContent = showAgeColumns ? 'Ẩn cột tuổi' : 'Hiện cột tuổi';
+        renderTable();
+    });
+
+    // ── File upload ──────────────────────────────────────────
+    excelUpload.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        showLoading(true);
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            try {
+                const data = new Uint8Array(ev.target.result);
+                const wb = XLSX.read(data, { type: 'array', cellText: true, cellDates: false });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                if (!json.length) { alert('Tệp không có dữ liệu!'); showLoading(false); return; }
+
+                // Chuẩn hóa tên cột: bỏ ký tự xuống dòng (\n) trong tên cột Excel
+                headers = (json[0] || []).map(h => String(h).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim());
+
+                // Xác định các cột CCCD/CMND để đọc dưới dạng text
+                const idColIndexes = new Set(
+                    headers.map((h, i) => isIdCol(h) ? i : -1).filter(i => i !== -1)
+                );
+
+                // Đọc lại dữ liệu dạng raw để lấy text gốc cho cột ID
+                const jsonRaw = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false });
+
+                rawData = json.slice(1).map((row, rowIdx) => {
+                    let obj = {};
+                    headers.forEach((h, i) => {
+                        if (idColIndexes.has(i)) {
+                            // Lấy giá trị text gốc từ jsonRaw để giữ số 0 đầu
+                            const rawVal = jsonRaw[rowIdx + 1] ? jsonRaw[rowIdx + 1][i] : undefined;
+                            obj[h] = rawVal !== undefined && rawVal !== null ? String(rawVal).trim() : '';
+                        } else {
+                            obj[h] = row[i] !== undefined ? row[i] : '';
+                        }
+                    });
+                    return obj;
+                });
+                // Tự động chuẩn hóa các cột ngày tháng về dd/mm/yyyy
+                rawData = normalizeDateColumns(rawData, headers);
+                filteredData = [...rawData];
+
+                // Thông báo các cột đã được chuẩn hóa
+                const normalizedCols = headers.filter(h => isDateCol(h) && !isIdCol(h));
+                const detectedIdCols = headers.filter(h => isIdCol(h));
+                if (normalizedCols.length > 0) {
+                    showDateNormalizeToast(normalizedCols, detectedIdCols);
+                } else if (detectedIdCols.length > 0) {
+                    showDateNormalizeToast([], detectedIdCols);
+                }
+                savedData = []; // Reset saved data when new file uploaded
+                householdData = []; // Reset household data
+                currentViewMode = 'current';
+                activeColFilters.clear();
+
+                initSearchUI();
+                initHouseholdSelects();
+                renderTable();
+                updateStats();
+                updateSavedIndicator();
+                searchSection.classList.remove('hidden');
+                exportBtn.disabled = false;
+                householdBtn.disabled = false;
+                viewModeBadge.textContent = 'Hiện tại';
+                viewModeBadge.className = 'text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full';
+            } catch(err) {
+                console.error(err);
+                alert('Lỗi đọc tệp. Vui lòng kiểm tra định dạng.');
+            } finally {
+                showLoading(false);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    // ── Build search UI ──────────────────────────────────────
+    function initSearchUI() {
+        filterChips.innerHTML = '';
+        activeInputsDiv.innerHTML = '';
+
+        headers.forEach(h => {
+            const chip = document.createElement('div');
+            chip.className = 'filter-chip';
+            const uid = 'chip-' + h.replace(/\s+/g, '_');
+            chip.innerHTML = `
+                <input type="checkbox" id="${uid}" data-col="${h}">
+                <label for="${uid}"><i class="fas fa-tag text-xs"></i> ${h}</label>
+            `;
+            const cb = chip.querySelector('input');
+            cb.addEventListener('change', function() {
+                if (this.checked) {
+                    activeColFilters.add(h);
+                    addColInput(h);
+                } else {
+                    activeColFilters.delete(h);
+                    removeColInput(h);
+                }
+                applyFilters();
+            });
+            filterChips.appendChild(chip);
+        });
+    }
+
+    // ── Initialize household selects ─────────────────────────
+    function initHouseholdSelects() {
+        // Populate selects
+        [hhOwnerCol, hhAddressCol, hhNameCol].forEach(select => {
+            select.innerHTML = '<option value="">-- Tự động phát hiện --</option>';
+            headers.forEach(h => {
+                const option = document.createElement('option');
+                option.value = h;
+                option.textContent = h;
+                select.appendChild(option);
+            });
+        });
+
+        // Auto-detect and set default values
+        const autoOwner = findCol(COL_MAP.owner);
+        const autoAddress = findCol(COL_MAP.address);
+        const autoName = findCol(COL_MAP.name);
+
+        if (autoOwner) hhOwnerCol.value = autoOwner;
+        if (autoAddress) hhAddressCol.value = autoAddress;
+        if (autoName) hhNameCol.value = autoName;
+    }
+
+    // ── Date normalization ───────────────────────────────────────────
+    const DATE_COL_KEYWORDS = [
+        'ngày sinh', 'ngaysinh', 'năm sinh', 'nămsinh', 'ngay sinh', 'nam sinh',
+        'ngày vào đảng', 'ngay vao dang', 'ngày kết nạp', 'ngay ket nap',
+        'vào đảng', 'vao dang',
+        'ngày', 'date', 'dob', 'born', 'birthday', 'ngày cấp', 'ngay cap',
+        'ngày hết hạn', 'ngay het han', 'ngày bắt đầu', 'ngày kết thúc',
+        'ngày tuyển dụng', 'ngày ký', 'ngay ky', 'ngày ban hành',
+        'ngày thành lập', 'ngày nghỉ hưu', 'ngày bổ nhiệm'
+    ];
+
+    function isDateCol(colName) {
+        const lower = colName.toLowerCase().trim();
+        return DATE_COL_KEYWORDS.some(kw => lower.includes(kw));
+    }
+
+    function normalizeDate(val) {
+        if (val === '' || val === null || val === undefined) return val;
+
+        if (typeof val === 'number') {
+            if (val > 10000 && val < 80000) {
+                try {
+                    const d = XLSX.SSF.parse_date_code(val);
+                    if (d) {
+                        const dd = String(d.d).padStart(2, '0');
+                        const mm = String(d.m).padStart(2, '0');
+                        const yyyy = d.y;
+                        return `${dd}/${mm}/${yyyy}`;
+                    }
+                } catch(e) {}
+            }
+            return val;
+        }
+
+        const s = String(val).trim();
+        if (!s) return val;
+
+        const alreadyDMY = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (alreadyDMY) {
+            const [, d, m, y] = alreadyDMY;
+            return `${d.padStart(2,'0')}/${m.padStart(2,'0')}/${y}`;
+        }
+
+        const isoMatch = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+        if (isoMatch) {
+            const [, y, m, d] = isoMatch;
+            return `${d.padStart(2,'0')}/${m.padStart(2,'0')}/${y}`;
+        }
+
+        const dashDMY = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+        if (dashDMY) {
+            const [, d, m, y] = dashDMY;
+            return `${d.padStart(2,'0')}/${m.padStart(2,'0')}/${y}`;
+        }
+
+        const shortYear = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+        if (shortYear) {
+            const [, d, m, yy] = shortYear;
+            const yyyy = parseInt(yy) >= 30 ? `19${yy}` : `20${yy}`;
+            return `${d.padStart(2,'0')}/${m.padStart(2,'0')}/${yyyy}`;
+        }
+
+        return s;
+    }
+
+    function normalizeDateColumns(data, colHeaders) {
+        const dateCols = colHeaders.filter(h => isDateCol(h) && !isIdCol(h));
+        if (dateCols.length === 0) return data;
+        return data.map(row => {
+            const newRow = {...row};
+            dateCols.forEach(col => {
+                newRow[col] = normalizeDate(row[col]);
+            });
+            return newRow;
+        });
+    }
+
+    // ── Birth / Party column detection ───────────────────────────────
+    const BIRTH_KEYWORDS = ['năm sinh', 'nămsinh', 'ngày sinh', 'ngaysinh', 'birth', 'dob', 'born', 'birthday', 'date of birth', 'year of birth', 'nam sinh', 'ngay sinh'];
+    const PARTY_KEYWORDS = ['ngày vào đảng', 'ngay vao dang', 'ngày kết nạp', 'ngay ket nap', 'party admission', 'date of party', 'vào đảng', 'vao dang'];
+
+    function isBirthCol(colName) {
+        const lower = colName.toLowerCase().trim();
+        return BIRTH_KEYWORDS.some(kw => lower.includes(kw));
+    }
+
+    function isPartyCol(colName) {
+        const lower = colName.toLowerCase().trim();
+        return PARTY_KEYWORDS.some(kw => lower.includes(kw));
+    }
+
+    function extractYear(val) {
+        if (val === '' || val === null || val === undefined) return null;
+        if (typeof val === 'number' && val > 10000 && val < 80000) {
+            const d = XLSX.SSF.parse_date_code(val);
+            return d ? d.y : null;
+        }
+        const s = String(val);
+        const m = s.match(/\b(19\d{2}|20\d{2})\b/);
+        return m ? parseInt(m[1]) : null;
+    }
+
+    function calculateAge(year) {
+        if (!year) return '';
+        return CURRENT_YEAR - year;
+    }
+
+    const CURRENT_YEAR = new Date().getFullYear();
+
+    function getDisplayColumns() {
+        let displayCols = [...headers];
+        
+        if (showAgeColumns) {
+            const { birthCols, partyCols } = findDateColumns();
+            
+            birthCols.forEach(birthCol => {
+                const index = displayCols.indexOf(birthCol);
+                if (index !== -1) {
+                    displayCols.splice(index + 1, 0, `_age_${birthCol}`);
+                }
+            });
+            
+            partyCols.forEach(partyCol => {
+                const index = displayCols.indexOf(partyCol);
+                if (index !== -1) {
+                    displayCols.splice(index + 1, 0, `_party_age_${partyCol}`);
+                }
+            });
+        }
+        
+        return displayCols;
+    }
+
+    function getColumnValue(row, colName) {
+        if (colName.startsWith('_age_')) {
+            const originalCol = colName.substring(5);
+            const year = extractYear(row[originalCol]);
+            return calculateAge(year);
+        } else if (colName.startsWith('_party_age_')) {
+            const originalCol = colName.substring(11);
+            const year = extractYear(row[originalCol]);
+            return calculateAge(year);
+        } else {
+            return row[colName] !== undefined ? row[colName] : '';
+        }
+    }
+
+    function getColumnDisplayName(colName) {
+        if (colName.startsWith('_age_')) {
+            const originalCol = colName.substring(5);
+            return `Tuổi (${originalCol})`;
+        } else if (colName.startsWith('_party_age_')) {
+            const originalCol = colName.substring(11);
+            return `Tuổi đảng (${originalCol})`;
+        } else {
+            return colName;
+        }
+    }
+
+    function isAgeColumn(colName) {
+        return colName.startsWith('_age_');
+    }
+
+    function isPartyAgeColumn(colName) {
+        return colName.startsWith('_party_age_');
+    }
+
+    function findDateColumns() {
+        const birthCols = headers.filter(h => isBirthCol(h));
+        const partyCols = headers.filter(h => isPartyCol(h));
+        return { birthCols, partyCols };
+    }
+
+    function addColInput(colName) {
+        if (document.querySelector(`[data-col-wrapper="${colName}"]`)) return;
+        const div = document.createElement('div');
+        div.setAttribute('data-col-wrapper', colName);
+
+        const isBirth = isBirthCol(colName);
+        const isParty = isPartyCol(colName);
+
+        if (isBirth || isParty) {
+            const icon = isParty ? 'fa-flag' : 'fa-birthday-cake';
+            const labelText = isParty ? `${colName} (Năm vào đảng / Tuổi đảng)` : colName;
+            const yearPlaceholder = isParty ? 'VD: 2010, 2015, 2020' : 'VD: 1978, 1985, 1990';
+            const agePlaceholder = isParty ? 'VD: 10, 12, 15 hoặc 10-15' : 'VD: 40, 45, 50 hoặc 35-45';
+            const yearHint = isParty ? 'Nhập một hoặc nhiều năm vào đảng' : 'Nhập một hoặc nhiều năm, cách nhau bằng dấu phẩy';
+            const ageHint = isParty ? 'Nhập tuổi đảng hoặc khoảng tuổi đảng' : 'Nhập tuổi đơn lẻ hoặc khoảng tuổi';
+
+            div.innerHTML = `
+                <label class="block text-xs font-medium text-slate-500 mb-1">
+                    <i class="fas ${icon} text-pink-400 mr-1"></i>${labelText}
+                </label>
+                <div class="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-blue-400 transition-all">
+                    <div class="flex border-b border-slate-200 bg-white p-1 gap-1">
+                        <button type="button" class="birth-tab-btn active" data-mode="year">Năm</button>
+                        <button type="button" class="birth-tab-btn" data-mode="age">Tuổi ${isParty ? 'đảng' : ''}</button>
+                    </div>
+                    <div class="p-2">
+                        <div class="birth-panel" data-panel="year">
+                            <input type="text" data-key="${colName}" data-birth-mode="year"
+                                placeholder="${yearPlaceholder}"
+                                class="col-input birth-input w-full px-3 py-1.5 bg-white border border-slate-200 rounded-md text-sm outline-none focus:border-blue-400 transition-all">
+                            <p class="birth-hint">${yearHint}</p>
+                        </div>
+                        <div class="birth-panel hidden" data-panel="age">
+                            <input type="text" data-key="${colName}" data-birth-mode="age"
+                                placeholder="${agePlaceholder}"
+                                class="col-input birth-input w-full px-3 py-1.5 bg-white border border-slate-200 rounded-md text-sm outline-none focus:border-blue-400 transition-all">
+                            <p class="birth-hint">${ageHint}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            div.querySelectorAll('.birth-tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    div.querySelectorAll('.birth-tab-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    const mode = this.dataset.mode;
+                    div.querySelectorAll('.birth-panel').forEach(p => p.classList.toggle('hidden', p.dataset.panel !== mode));
+                    div.querySelectorAll('.birth-input').forEach(inp => {
+                        if (inp.dataset.birthMode !== mode) inp.value = '';
+                    });
+                    applyFilters();
+                });
+            });
+            div.querySelectorAll('.birth-input').forEach(inp => inp.addEventListener('input', applyFilters));
+        } else {
+            // Detect if this column is a gender column or has few unique values → use dropdown
+            const isGenderCol = COL_MAP.gender.some(g =>
+                colName.toLowerCase().replace(/\s+/g,'').includes(g.replace(/\s+/g,''))
+            );
+            const uniqueVals = [...new Set(rawData.map(r => String(r[colName] || '').trim()).filter(v => v !== ''))];
+            const useDropdown = isGenderCol || (uniqueVals.length > 0 && uniqueVals.length <= 10);
+
+            if (useDropdown) {
+                const options = uniqueVals.sort().map(v =>
+                    `<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`
+                ).join('');
+                div.innerHTML = `
+                    <label class="block text-xs font-medium text-slate-500 mb-1">${colName}</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-300 pointer-events-none"><i class="fas fa-filter text-xs"></i></span>
+                        <select data-key="${colName}"
+                            class="col-input w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none">
+                            <option value="">Tất cả</option>
+                            ${options}
+                        </select>
+                    </div>
+                `;
+                div.querySelector('select').addEventListener('change', applyFilters);
+            } else {
+                div.innerHTML = `
+                    <label class="block text-xs font-medium text-slate-500 mb-1">${colName}</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-300 pointer-events-none"><i class="fas fa-filter text-xs"></i></span>
+                        <input type="text" data-key="${colName}"
+                            placeholder="Tìm ${colName}..."
+                            class="col-input w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                    </div>
+                `;
+                div.querySelector('input').addEventListener('input', applyFilters);
+            }
+        }
+
+        activeInputsDiv.appendChild(div);
+    }
+
+    function removeColInput(colName) {
+        const el = document.querySelector(`[data-col-wrapper="${colName}"]`);
+        if (el) el.remove();
+    }
+
+    checkAllCols.addEventListener('click', function() {
+        filterChips.querySelectorAll('input[type=checkbox]').forEach(cb => {
+            if (!cb.checked) { cb.checked = true; activeColFilters.add(cb.dataset.col); addColInput(cb.dataset.col); }
+        });
+        applyFilters();
+    });
+    uncheckAllCols.addEventListener('click', function() {
+        filterChips.querySelectorAll('input[type=checkbox]').forEach(cb => {
+            if (cb.checked) { cb.checked = false; activeColFilters.delete(cb.dataset.col); removeColInput(cb.dataset.col); }
+        });
+        applyFilters();
+    });
+
+    // ── Filtering ────────────────────────────────────────────
+    searchAll.addEventListener('input', applyFilters);
+
+    function matchBirthFilter(cellVal, input) {
+        const mode = input.dataset.birthMode;
+        const raw = input.value.trim();
+        if (!raw) return true;
+        const year = extractYear(cellVal);
+        if (year === null) return false;
+
+        if (mode === 'year') {
+            const years = raw.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+            return years.length === 0 ? true : years.includes(year);
+        } else {
+            const age = CURRENT_YEAR - year;
+            const rangeMatch = raw.match(/^(\d+)\s*[-–]\s*(\d+)$/);
+            if (rangeMatch) {
+                const lo = parseInt(rangeMatch[1]), hi = parseInt(rangeMatch[2]);
+                return age >= Math.min(lo, hi) && age <= Math.max(lo, hi);
+            }
+            const ages = raw.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+            return ages.length === 0 ? true : ages.includes(age);
+        }
+    }
+
+    function applyFilters() {
+        const globalVal = searchAll.value.trim().toLowerCase();
+        let temp = [...rawData];
+
+        if (globalVal) {
+            temp = temp.filter(row =>
+                Object.values(row).some(v => String(v).toLowerCase().includes(globalVal))
+            );
+        }
+
+        document.querySelectorAll('.col-input').forEach(input => {
+            const key = input.dataset.key;
+            const panel = input.closest('.birth-panel');
+            if (panel && panel.classList.contains('hidden')) return;
+
+            const isDateLike = !!input.dataset.birthMode;
+            if (isDateLike) {
+                if (input.value.trim()) {
+                    temp = temp.filter(row => matchBirthFilter(row[key], input));
+                }
+            } else if (input.tagName === 'SELECT') {
+                // Dropdown: exact match (empty = show all)
+                const val = input.value;
+                if (val !== '') {
+                    temp = temp.filter(row => String(row[key] || '').trim() === val);
+                }
+            } else {
+                const val = input.value.trim().toLowerCase();
+                if (val) {
+                    temp = temp.filter(row => String(row[key] || '').toLowerCase().includes(val));
+                }
+            }
+        });
+
+        filteredData = temp;
+        currentViewMode = 'current';
+        viewModeBadge.textContent = 'Hiện tại';
+        viewModeBadge.className = 'text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full';
+        renderTable();
+        updateStats();
+    }
+
+    // ── Save temp ────────────────────────────────────────────
+    saveTempBtn.addEventListener('click', function() {
+        if (filteredData.length === 0) {
+            alert('Không có dữ liệu để lưu!');
+            return;
+        }
+        
+        const newSaved = [...savedData];
+        filteredData.forEach(row => {
+            const exists = savedData.some(savedRow => 
+                headers.every(h => String(savedRow[h] || '') === String(row[h] || ''))
+            );
+            if (!exists) {
+                newSaved.push({...row});
+            }
+        });
+        
+        savedData = newSaved;
+        updateSavedIndicator();
+        
+        saveTempBtn.innerHTML = '<i class="fas fa-check text-xs"></i> <span>Đã lưu!</span>';
+        setTimeout(() => {
+            saveTempBtn.innerHTML = '<i class="fas fa-bookmark text-xs"></i> <span>Lưu tạm</span>';
+        }, 1500);
+        
+        currentViewMode = 'saved';
+        viewModeBadge.textContent = 'Đã lưu';
+        viewModeBadge.className = 'text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full';
+        renderTable();
+        updateStats();
+    });
+
+    // ── Clear all ────────────────────────────────────────────
+    clearAllBtn.addEventListener('click', function() {
+        if (confirm('Xóa tất cả dữ liệu hiện tại và đã lưu?')) {
+            rawData = [];
+            filteredData = [];
+            savedData = [];
+            householdData = [];
+            headers = [];
+            currentViewMode = 'current';
+            
+            searchSection.classList.add('hidden');
+            exportBtn.disabled = true;
+            householdBtn.disabled = true;
+            
+            tableHeader.innerHTML = '';
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="100%" class="p-12 text-center text-slate-400 italic">
+                        <i class="fas fa-file-excel text-5xl mb-4 block opacity-20 text-green-500"></i>
+                        Vui lòng tải lên tệp Excel để bắt đầu
+                    </td>
+                </tr>
+            `;
+            
+            updateStats();
+            updateSavedIndicator();
+            viewModeBadge.textContent = 'Hiện tại';
+            viewModeBadge.className = 'text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full';
+            
+            excelUpload.value = '';
+        }
+    });
+
+    // ── Reset search ─────────────────────────────────────────
+    resetBtn.addEventListener('click', function() {
+        searchAll.value = '';
+        filterChips.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = false; });
+        activeColFilters.clear();
+        activeInputsDiv.innerHTML = '';
+        activeInputsDiv.querySelectorAll('select.col-input').forEach(s => s.value = '');
+        
+        if (currentViewMode === 'saved') {
+            filteredData = [...rawData];
+            currentViewMode = 'current';
+            viewModeBadge.textContent = 'Hiện tại';
+            viewModeBadge.className = 'text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full';
+        } else {
+            filteredData = [...rawData];
+        }
+        
+        renderTable();
+        updateStats();
+    });
+
+    // ── Render table ─────────────────────────────────────────
+    function renderTable() {
+        const dataToShow = currentViewMode === 'saved' ? savedData : filteredData;
+        
+        if (headers.length === 0) return;
+        
+        const displayCols = getDisplayColumns();
+        
+        tableHeader.innerHTML = `
+            <th class="col-stt px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider border-b-2 border-slate-200 bg-slate-100 sticky left-0 z-10">STT</th>
+            ${displayCols.map(col => {
+                const displayName = getColumnDisplayName(col);
+                const isAge = isAgeColumn(col);
+                const isPartyAge = isPartyAgeColumn(col);
+                const ageClass = isAge ? 'age-column' : (isPartyAge ? 'party-age-column' : '');
+                return `
+                    <th class="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b-2 border-slate-200 bg-slate-100 whitespace-nowrap ${ageClass}">
+                        ${displayName}
+                        ${isAge ? '<i class="fas fa-birthday-cake ml-1 text-green-600"></i>' : ''}
+                        ${isPartyAge ? '<i class="fas fa-flag ml-1 text-blue-600"></i>' : ''}
+                    </th>
+                `;
+            }).join('')}
+        `;
+
+        if (!dataToShow.length) {
+            const message = currentViewMode === 'saved' ? 'Chưa có dữ liệu lưu tạm' : 'Không tìm thấy kết quả phù hợp';
+            tableBody.innerHTML = `
+                <tr><td colspan="${displayCols.length + 1}" class="px-6 py-12 text-center text-slate-400">
+                    <i class="fas fa-search text-3xl block mb-3 opacity-20"></i>${message}
+                </td></tr>
+            `;
+            return;
+        }
+
+        tableBody.innerHTML = dataToShow.map((row, idx) => `
+            <tr class="hover:bg-blue-50/40 transition-colors">
+                <td class="col-stt px-3 py-2.5 text-xs sticky left-0 bg-white border-r border-slate-100">${idx + 1}</td>
+                ${displayCols.map(col => {
+                    const value = getColumnValue(row, col);
+                    const isAge = isAgeColumn(col);
+                    const isPartyAge = isPartyAgeColumn(col);
+                    const ageClass = isAge ? 'age-column' : (isPartyAge ? 'party-age-column' : '');
+                    return `<td class="px-4 py-2.5 text-sm text-slate-700 whitespace-nowrap ${ageClass}">${value}</td>`;
+                }).join('')}
+            </tr>
+        `).join('');
+    }
+
+    // ── Stats ─────────────────────────────────────────────────
+    function updateStats() {
+        const dataToShow = currentViewMode === 'saved' ? savedData : filteredData;
+        const count = dataToShow.length;
+        const total = rawData.length;
+        const modeText = currentViewMode === 'saved' ? '(đã lưu)' : '';
+        resultCount.textContent = `Hiển thị ${count} ${modeText} / ${total} tổng`;
+        tableStats.textContent = `Tổng: ${total} dòng · Đã lưu: ${savedData.length} dòng · Hiển thị: ${count} dòng`;
+    }
+
+    function updateSavedIndicator() {
+        if (savedData.length > 0) {
+            savedIndicator.classList.remove('hidden');
+            savedCount.textContent = savedData.length;
+        } else {
+            savedIndicator.classList.add('hidden');
+        }
+    }
+
+    function showLoading(show) {
+        loadingOverlay.classList.toggle('hidden', !show);
+    }
+
+    // ── Household Summary ─────────────────────────────────────
+    householdBtn.addEventListener('click', function() {
+        if (rawData.length === 0) {
+            alert('Vui lòng tải dữ liệu trước!');
+            return;
+        }
+        initHouseholdSelects();
+        householdModal.classList.add('open');
+    });
+
+    closeHouseholdModal.addEventListener('click', () => householdModal.classList.remove('open'));
+    closeHouseholdBtn.addEventListener('click', () => householdModal.classList.remove('open'));
+    householdModal.addEventListener('click', function(e) { if (e.target === householdModal) householdModal.classList.remove('open'); });
+
+    processHousehold.addEventListener('click', function() {
+        if (!rawData.length) return;
+        
+        const ownerCol = hhOwnerCol.value || findCol(COL_MAP.owner);
+        const addressCol = hhAddressCol.value || findCol(COL_MAP.address);
+        const nameCol = hhNameCol.value || findCol(COL_MAP.name);
+        
+        if (!ownerCol) {
+            alert('Không tìm thấy cột "Tên chủ hộ". Vui lòng chọn thủ công.');
+            return;
+        }
+
+        const map = new Map();
+        rawData.forEach(row => {
+            const owner = String(row[ownerCol] || '').trim();
+            if (!owner) return;
+            
+            if (!map.has(owner)) {
+                map.set(owner, { 
+                    owner, 
+                    count: 0, 
+                    address: addressCol ? String(row[addressCol] || '') : '' 
+                });
+            }
+            map.get(owner).count++;
+            
+            if (!map.get(owner).address && addressCol) {
+                map.get(owner).address = String(row[addressCol] || '');
+            }
+        });
+
+        householdData = Array.from(map.values());
+        householdData.sort((a, b) => b.count - a.count);
+        
+        renderHouseholdResult(householdData);
+        exportHousehold.disabled = false;
+        householdExportHint.textContent = `Có ${householdData.length} hộ`;
+    });
+
+    function renderHouseholdResult(data) {
+        const totalHouseholds = data.length;
+        const totalPeople = data.reduce((s, h) => s + h.count, 0);
+        const avgPeople = totalHouseholds > 0 ? (totalPeople / totalHouseholds).toFixed(1) : 0;
+        const maxPeople = data.length > 0 ? Math.max(...data.map(h => h.count)) : 0;
+        
+        householdStats.innerHTML = `
+            <div class="stat-card">
+                <div class="stat-value">${totalHouseholds}</div>
+                <div class="stat-label">Số hộ</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: #2563eb;">${totalPeople}</div>
+                <div class="stat-label">Tổng nhân khẩu</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: #d97706;">${avgPeople}</div>
+                <div class="stat-label">TB nhân khẩu/hộ</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: #7c3aed;">${maxPeople}</div>
+                <div class="stat-label">Hộ đông nhất</div>
+            </div>
+        `;
+        
+        householdCount.textContent = `${totalHouseholds} hộ`;
+        
+        if (data.length === 0) {
+            householdTableBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="p-8 text-center text-slate-400 italic">
+                        Không có dữ liệu hộ gia đình
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        householdTableBody.innerHTML = data.map((h, idx) => `
+            <tr class="hover:bg-purple-50">
+                <td class="px-3 py-2 text-sm text-slate-600 font-medium">${idx + 1}</td>
+                <td class="px-3 py-2 text-sm text-slate-700 font-medium">${h.owner || '—'}</td>
+                <td class="px-3 py-2 text-sm text-slate-700">
+                    <span class="badge" style="background: #dbeafe; color: #1d4ed8;">${h.count}</span>
+                </td>
+                <td class="px-3 py-2 text-sm text-slate-600">${h.address || '—'}</td>
+            </tr>
+        `).join('');
+    }
+
+    exportHousehold.addEventListener('click', function() {
+        if (!householdData.length) {
+            alert('Chưa có dữ liệu tổng hợp!');
+            return;
+        }
+        
+        const totalPeople = householdData.reduce((s, h) => s + h.count, 0);
+        const exportRows = householdData.map((h, idx) => ({
+            'STT': idx + 1,
+            'Tên chủ hộ': h.owner,
+            'Số nhân khẩu': h.count,
+            'Nơi thường trú': h.address
+        }));
+        
+        exportRows.push({
+            'STT': '',
+            'Tên chủ hộ': 'TỔNG CỘNG',
+            'Số nhân khẩu': totalPeople,
+            'Nơi thường trú': `${householdData.length} hộ`
+        });
+        
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(exportRows);
+        XLSX.utils.book_append_sheet(wb, ws, 'Tổng hợp hộ gia đình');
+        
+        const ts = new Date().toISOString().slice(0, 10);
+        XLSX.writeFile(wb, `Tong_hop_ho_gia_dinh_${ts}.xlsx`);
+    });
+
+    // ── Export modal ─────────────────────────────────────────
+    exportBtn.addEventListener('click', openExportModal);
+    closeModal.addEventListener('click', () => exportModal.classList.remove('open'));
+    cancelExport.addEventListener('click', () => exportModal.classList.remove('open'));
+    exportModal.addEventListener('click', function(e) { if (e.target === exportModal) exportModal.classList.remove('open'); });
+
+    function openExportModal() {
+        exportColList.innerHTML = headers.map((h, i) => {
+            const isStt = /stt/i.test(h);
+            return `
+            <label class="col-toggle select-none">
+                <input type="checkbox" class="export-col-cb" data-col="${h}" ${isStt ? '' : 'checked'}>
+                <span class="text-sm text-slate-700">${h}</span>
+            </label>`;
+        }).join('');
+
+        exportColList.querySelectorAll('.export-col-cb').forEach(cb => cb.addEventListener('change', updateExportPreview));
+        exportStt.addEventListener('change', updateExportPreview);
+        
+        const { birthCols, partyCols } = findDateColumns();
+        let autoInfoHtml = '';
+        
+        if (birthCols.length > 0) {
+            autoInfoHtml += `<div><i class="fas fa-birthday-cake text-pink-500 mr-1"></i> `;
+            birthCols.forEach(col => {
+                autoInfoHtml += `Cột "${col}" → sẽ thêm cột "<strong>Tuổi</strong>"<br>`;
+            });
+            autoInfoHtml += `</div>`;
+        }
+        
+        if (partyCols.length > 0) {
+            autoInfoHtml += `<div class="mt-1"><i class="fas fa-flag text-blue-500 mr-1"></i> `;
+            partyCols.forEach(col => {
+                autoInfoHtml += `Cột "${col}" → sẽ thêm cột "<strong>Tuổi đảng</strong>"<br>`;
+            });
+            autoInfoHtml += `</div>`;
+        }
+        
+        if (autoInfoHtml === '') {
+            autoInfoHtml = '<span class="text-slate-400">Không phát hiện cột ngày sinh hoặc ngày vào đảng</span>';
+        }
+        
+        autoColumnsInfo.innerHTML = autoInfoHtml;
+        
+        savedExportHint.textContent = savedData.length > 0 ? 
+            `Có ${savedData.length} dòng đã lưu` : 
+            'Chưa có dữ liệu lưu tạm';
+        
+        householdExportHint.textContent = householdData.length > 0 ? 
+            `Có ${householdData.length} hộ đã tổng hợp` : 
+            'Chưa có dữ liệu tổng hợp';
+        
+        const savedRadio = document.querySelector('input[value="saved"]');
+        const householdRadio = document.querySelector('input[value="household"]');
+        
+        if (savedData.length === 0) {
+            savedRadio.disabled = true;
+            document.querySelector('input[value="current"]').checked = true;
+        } else {
+            savedRadio.disabled = false;
+        }
+        
+        if (householdData.length === 0) {
+            householdRadio.disabled = true;
+        } else {
+            householdRadio.disabled = false;
+        }
+
+        document.querySelectorAll('input[name="export-mode"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                updateExportPreview();
+                // Hide column selection for household export
+                const colSection = document.getElementById('export-col-section');
+                const sttCheckbox = document.getElementById('export-stt').closest('label');
+                if (this.value === 'household') {
+                    colSection.style.display = 'none';
+                    sttCheckbox.style.display = 'none';
+                } else {
+                    colSection.style.display = 'block';
+                    sttCheckbox.style.display = 'flex';
+                }
+            });
+        });
+
+        updateExportPreview();
+        exportModal.classList.add('open');
+    }
+
+    modalSelectAll.addEventListener('click', function() {
+        exportColList.querySelectorAll('.export-col-cb').forEach(cb => cb.checked = true);
+        updateExportPreview();
+    });
+    modalDeselectAll.addEventListener('click', function() {
+        exportColList.querySelectorAll('.export-col-cb').forEach(cb => cb.checked = false);
+        updateExportPreview();
+    });
+
+    function updateExportPreview() {
+        const exportMode = document.querySelector('input[name="export-mode"]:checked').value;
+        
+        if (exportMode === 'household') {
+            const rowCount = householdData.length;
+            exportPreview.innerHTML = `Sẽ xuất <strong>${rowCount}</strong> hộ gia đình, <strong>4</strong> cột (STT, Tên chủ hộ, Số nhân khẩu, Nơi thường trú)`;
+            return;
+        }
+        
+        const selectedCols = getSelectedExportCols();
+        const { birthCols, partyCols } = findDateColumns();
+        
+        let autoColCount = 0;
+        birthCols.forEach(col => {
+            if (selectedCols.includes(col)) autoColCount++;
+        });
+        partyCols.forEach(col => {
+            if (selectedCols.includes(col)) autoColCount++;
+        });
+        
+        const colCount = selectedCols.length + (exportStt.checked ? 1 : 0) + autoColCount;
+        const rowCount = exportMode === 'saved' ? savedData.length : filteredData.length;
+        exportPreview.innerHTML = `Sẽ xuất <strong>${rowCount}</strong> hàng, <strong>${colCount}</strong> cột (bao gồm ${autoColCount} cột tuổi tự động)`;
+    }
+
+    function getSelectedExportCols() {
+        return [...exportColList.querySelectorAll('.export-col-cb:checked')].map(cb => cb.dataset.col);
+    }
+
+    confirmExport.addEventListener('click', function() {
+        const exportMode = document.querySelector('input[name="export-mode"]:checked').value;
+        
+        // Xử lý xuất tổng hợp hộ gia đình
+        if (exportMode === 'household') {
+            if (!householdData.length) {
+                alert('Chưa có dữ liệu tổng hợp hộ gia đình!');
+                return;
+            }
+            
+            const totalPeople = householdData.reduce((s, h) => s + h.count, 0);
+            const exportRows = householdData.map((h, idx) => ({
+                'STT': idx + 1,
+                'Tên chủ hộ': h.owner,
+                'Số nhân khẩu': h.count,
+                'Nơi thường trú': h.address
+            }));
+            
+            exportRows.push({
+                'STT': '',
+                'Tên chủ hộ': 'TỔNG CỘNG',
+                'Số nhân khẩu': totalPeople,
+                'Nơi thường trú': `${householdData.length} hộ`
+            });
+            
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(exportRows);
+            XLSX.utils.book_append_sheet(wb, ws, 'Tổng hợp hộ gia đình');
+            
+            const ts = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `Tong_hop_ho_gia_dinh_${ts}.xlsx`);
+            exportModal.classList.remove('open');
+            return;
+        }
+        
+        const selectedCols = getSelectedExportCols();
+        const dataToExport = exportMode === 'saved' ? savedData : filteredData;
+        
+        if (!selectedCols.length && !exportStt.checked) {
+            alert('Vui lòng chọn ít nhất một cột!'); return;
+        }
+        if (!dataToExport.length) { 
+            alert(exportMode === 'saved' ? 'Không có dữ liệu lưu tạm để xuất!' : 'Không có dữ liệu để xuất!'); 
+            return; 
+        }
+
+        const includeStt = exportStt.checked;
+        const { birthCols, partyCols } = findDateColumns();
+        
+        let ageCounter = 0;
+        let partyAgeCounter = 0;
+        const exportColNameMap = new Map();
+        
+        const exportRows = dataToExport.map((row, idx) => {
+            let obj = {};
+            if (includeStt) obj['STT'] = idx + 1;
+            
+            ageCounter = 0;
+            partyAgeCounter = 0;
+            
+            selectedCols.forEach(col => { 
+                obj[col] = row[col] !== undefined ? row[col] : ''; 
+            });
+            
+            birthCols.forEach(col => {
+                if (selectedCols.includes(col)) {
+                    const year = extractYear(row[col]);
+                    const age = calculateAge(year);
+                    const exportName = birthCols.length > 1 ? `Tuổi ${ageCounter + 1}` : `Tuổi`;
+                    obj[exportName] = age;
+                    if (!exportColNameMap.has(col)) {
+                        exportColNameMap.set(col, exportName);
+                    }
+                    ageCounter++;
+                }
+            });
+            
+            partyCols.forEach(col => {
+                if (selectedCols.includes(col)) {
+                    const year = extractYear(row[col]);
+                    const age = calculateAge(year);
+                    const exportName = partyCols.length > 1 ? `Tuổi đảng ${partyAgeCounter + 1}` : `Tuổi đảng`;
+                    obj[exportName] = age;
+                    if (!exportColNameMap.has(col)) {
+                        exportColNameMap.set(col, exportName);
+                    }
+                    partyAgeCounter++;
+                }
+            });
+            
+            return obj;
+        });
+
+        let headerOrder = [];
+        if (includeStt) headerOrder.push('STT');
+        
+        selectedCols.forEach(col => {
+            headerOrder.push(col);
+            if (birthCols.includes(col)) {
+                headerOrder.push(exportColNameMap.get(col));
+            }
+            if (partyCols.includes(col)) {
+                headerOrder.push(exportColNameMap.get(col));
+            }
+        });
+        
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(exportRows, { header: headerOrder });
+        
+        const sheetName = exportMode === 'saved' ? 'Nhân Sự (Đã lưu)' : 'Nhân Sự';
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        
+        const ts = new Date().toISOString().slice(0, 10);
+        const prefix = exportMode === 'saved' ? 'DS_NhanSu_Saved' : 'DS_NhanSu';
+        XLSX.writeFile(wb, `${prefix}_${ts}.xlsx`);
+        exportModal.classList.remove('open');
+    });
+</script>
+</body>
+</html>
